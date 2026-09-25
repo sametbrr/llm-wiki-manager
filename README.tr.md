@@ -225,11 +225,23 @@ Override bayrakları: `--stdout` (terminal, takip yok), `--no-track` (dosya yaz,
 
 ## Çok-Wiki
 
-Çoğu kullanıcı tek bir wiki ile başlar. İki wiki'niz olduğunda — örneğin çalışma dizinindeki proje wikisi ve uzun vadeli bir "second brain" (genellikle mevcut bir Obsidian vault'u) — skill, proje `CLAUDE.md`'sindeki tek bir bildirgiye göre yazmaları aralarında yönlendirir.
+Çoğu kullanıcı tek bir wiki ile başlar. **İki** wiki'niz olduğunda — örneğin çalışma dizinindeki proje wikisi ve uzun ömürlü global bir "second brain" (çoğu zaman mevcut bir Obsidian vault'u) — skill, yazmaları projenin `CLAUDE.md`'sindeki tek bir tanıma göre ikisi arasında yönlendirir.
 
-### Kurulum
+```
+~/projects/x-project/          ← active project (current working directory)
+├── CLAUDE.md                  ← project schema — declares the global wiki path
+├── raw/                       ← project sources
+└── wiki/                      ← project wiki
 
-Proje `CLAUDE.md`'sine şunu ekleyin (veya agentten yapmasını isteyin):
+~/Documents/obsidian/          ← global wiki (long-lived, exists across projects)
+├── CLAUDE.md                  ← global schema
+├── raw/
+└── wiki/
+```
+
+### Tek Seferlik Kurulum
+
+Projenin `CLAUDE.md`'sine şunu ekleyin (ya da agent'tan eklemesini isteyin):
 
 ```markdown
 ## External Wiki
@@ -237,20 +249,28 @@ Proje `CLAUDE.md`'sine şunu ekleyin (veya agentten yapmasını isteyin):
 Global knowledge base: ~/Documents/obsidian/
 
 ### Routing rules
-- Projeye özgü kod kararları, mimari, hatalar → bu projenin `wiki/`'si
-- Bu projenin ötesine geçen kavramlar, çerçeveler, pattern'lar → global wiki
-- Şüphe durumunda yazmadan önce sor
-- Scriptler her zaman doğru wiki root'unu gösteren `--path` bayrağı gerektirir
+- Project-specific code decisions, architecture, bugs, configuration → this project's `wiki/`
+- Concepts, frameworks, patterns, ideas applicable beyond this project → global wiki
+- When in doubt, ask before writing
+- Scripts always need `--path` flag pointing to the right wiki root
+
+### Cross-wiki links
+- Use absolute paths (`~/...`) when linking from one wiki to the other.
+- Never use relative paths that cross wiki boundaries.
 ```
+
+Yönlendirme kuralları projeye özgü bilgiyi proje wikisine, projeden bağımsız bilgiyi global wikiye gönderir. Wikiler arası bağlantılar her zaman mutlak yolla (`~/...`) verilir; wiki sınırını aşan göreli yol kullanılmaz.
 
 ### Dört Temel Senaryo
 
 | # | Senaryo | Tetikleyici | Agent ne yapar |
 |---|---|---|---|
-| **A** | Projeden **global'e yaz** | "JWT refresh rotasyonunu global wiki'me ekle" | Proje `CLAUDE.md`'sini okur → global yolu çözer → global'e yazar |
-| **B** | Global'den **projeye çek** | "Global wiki rate limiting hakkında ne diyor? /api/search'e uygula" | Global sayfaları okur → öneri sentezler → global sayfaya bağlantı veren proje sayfası yazar |
-| **C** | Proje sayfasını global'e **tanıt** | "concepts/event-sourcing.md olgunlaştı, tanıt onu" | İçeriği global'e taşır → proje yolunda tek satırlık yönlendirme bırakır → her iki indeksi ve logu günceller |
-| **D** | Her iki wiki'yi **lint et** | "İki wiki'yi de lint et" | `lint_wiki.py --path` her birine karşı çalıştırır → tek özet döner |
+| **A** | Projedeyken **global'e yaz** | "JWT refresh rotasyonunu global wiki'me ekle" | Proje `CLAUDE.md`'sini okur → global yolu çözer → global'e yazar, proje wikisine dokunmaz |
+| **B** | Global'den **projeye çek** | "Global wiki rate limiting hakkında ne diyor? /api/search'e uygula" | Global sayfaları okur → öneri sentezler → global sayfaya **bağlantı veren** (asla kopyalamayan) projeye özel bir sayfa yazar |
+| **C** | Proje sayfasını global'e **taşı** | "concepts/event-sourcing.md olgunlaştı, taşı onu" | İçeriği global'e taşır → proje yolunda tek satırlık yönlendirme bırakır → iki indeksi ve logu günceller |
+| **D** | İki wiki'yi **birlikte lint et** | "İki wiki'yi de lint et" | Her birinde `lint_wiki.py --path` çalıştırır → iki raporu okur → tek özet döner |
+
+Dört senaryonun ayrıntılı anlatımı [`references/multi-wiki-routing.md`](references/multi-wiki-routing.md) dosyasında.
 
 ---
 
