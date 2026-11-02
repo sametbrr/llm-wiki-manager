@@ -1,6 +1,6 @@
 {
   "name": "llm-wiki-manager",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Personal LLM-managed wiki: ingest sources, cross-reference pages, query with citations, and lint your markdown knowledge base — for Claude Code and Codex",
   "author": {
     "name": "sametbrr",
