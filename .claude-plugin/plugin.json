@@ -1,8 +1,23 @@
 {
   "name": "llm-wiki-manager",
-  "description": "Personal LLM-managed wiki: ingest sources, cross-reference pages, query with citations, and lint your markdown knowledge base",
-  "author": { "name": "sametbrr", "email": "sametbrr@gmail.com" },
+  "version": "1.5.0",
+  "description": "Personal LLM-managed wiki: ingest sources, cross-reference pages, query with citations, and lint your markdown knowledge base — for Claude Code and Codex",
+  "author": {
+    "name": "sametbrr",
+    "email": "sametbrr@gmail.com",
+    "url": "https://github.com/sametbrr"
+  },
+  "homepage": "https://github.com/sametbrr/llm-wiki-manager",
   "repository": "https://github.com/sametbrr/llm-wiki-manager",
   "license": "MIT",
-  "keywords": ["wiki", "knowledge-management", "second-brain", "research"]
+  "keywords": [
+    "wiki",
+    "knowledge-management",
+    "second-brain",
+    "research",
+    "obsidian",
+    "agent-skills",
+    "claude-code",
+    "codex"
+  ]
 }

@@ -4,7 +4,7 @@
 
 # LLM Wiki Manager
 
-A Claude Code skill for building and maintaining a personal LLM-managed wiki — a persistent, compounding knowledge base where the LLM does all the writing, cross-referencing, and bookkeeping while you curate sources and ask questions.
+An Agent Skill and plugin for Claude Code and Codex for building and maintaining a personal LLM-managed wiki — a persistent, compounding knowledge base where the LLM does all the writing, cross-referencing, and bookkeeping while you curate sources and ask questions.
 
 > 🇹🇷 Türkçe için [README.tr.md](README.tr.md)
 
@@ -13,13 +13,14 @@ A Claude Code skill for building and maintaining a personal LLM-managed wiki —
 ## Quick Start
 
 ```bash
-git clone https://github.com/sametbrr/llm-wiki-manager ~/.claude/skills/llm-wiki-manager
+claude plugin marketplace add sametbrr/skill-hub && claude plugin install llm-wiki-manager@skill-hub   # Claude Code
+codex plugin marketplace add sametbrr/skill-hub && codex plugin add llm-wiki-manager@skill-hub         # Codex
 ```
 
-Start a new Claude Code session in your research folder:
+Start a new session in your research folder:
 
 ```bash
-mkdir ~/research/my-topic && cd ~/research/my-topic && claude
+mkdir ~/research/my-topic && cd ~/research/my-topic && claude   # or: codex
 > "Set up an LLM wiki here. Topic: history of nutrition science."
 ```
 
@@ -29,7 +30,7 @@ mkdir ~/research/my-topic && cd ~/research/my-topic && claude
 
 Instead of RAG — where the LLM rediscovers answers from raw documents on every query — this pattern has the LLM **compile** raw sources into a persistent, interlinked markdown wiki. Each new source enriches existing pages. Cross-references are built eagerly. Contradictions are flagged. Knowledge compounds over time.
 
-Implements [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) as a full Claude Code skill with 8 operating modes (including multi-wiki routing), 5 idempotent Python scripts, 8 page templates, and 11 reference documents.
+Implements [Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) as a full agent skill with 9 operating modes (including multi-wiki routing and migrate), 5 idempotent Python scripts, 8 page templates, and 11 reference documents.
 
 ```
 Without this pattern          With this pattern
@@ -43,31 +44,33 @@ Query 3 → re-read 50 docs     Query 3 → read updated wiki (contradictions al
 
 ## Requirements
 
-- Claude Code or any [agentskills.io](https://agentskills.io)-compatible agent
+- Claude Code, OpenAI Codex, or any [agentskills.io](https://agentskills.io)-compatible agent
 - Python 3.9+ (stdlib only, for the 5 included scripts — no pip install needed)
 
 ---
 
 ## Installation
 
-**Option 1 — git clone (recommended)**
+**Option 1 — Claude Code plugin (recommended)**
 ```bash
-git clone https://github.com/sametbrr/llm-wiki-manager ~/.claude/skills/llm-wiki-manager
+claude plugin marketplace add sametbrr/skill-hub
+claude plugin install llm-wiki-manager@skill-hub
 ```
 
-**Option 2 — GitHub CLI** (requires gh CLI v2.90+)
+**Option 2 — Codex plugin**
 ```bash
-gh skill install sametbrr/llm-wiki-manager
+codex plugin marketplace add sametbrr/skill-hub
+codex plugin add llm-wiki-manager@skill-hub
 ```
 
-**Option 3 — .skill file**
+**Option 3 — GitHub CLI, any agent** (gh CLI with `gh skill`)
 ```bash
-curl -L -o llm-wiki-manager.skill \
-  https://github.com/sametbrr/llm-wiki-manager/releases/latest/download/llm-wiki-manager.skill
-unzip llm-wiki-manager.skill -d ~/.claude/skills/llm-wiki-manager
+gh skill install sametbrr/llm-wiki-manager llm-wiki-manager --agent claude-code --scope user   # or --agent codex
 ```
 
-After installing, start a new Claude Code session. The skill loads automatically when relevant.
+**Option 4 — manual copy:** copy `skills/llm-wiki-manager/` into `~/.claude/skills/` or `~/.agents/skills/`.
+
+After installing, start a new session. The skill loads automatically when relevant.
 
 ---
 
@@ -79,12 +82,12 @@ The skill auto-detects which mode applies from natural language. No slash comman
 
 | Mode | Trigger examples | What happens |
 |---|---|---|
-| **Bootstrap** | "Set up a wiki", "start a knowledge base here" | Scaffolds `raw/`, `wiki/`, `CLAUDE.md` from templates |
+| **Bootstrap** | "Set up a wiki", "start a knowledge base here" | Scaffolds `raw/`, `wiki/` and the schema file (`AGENTS.md` + a `CLAUDE.md` pointer) from templates |
 | **Ingest** | "Add this PDF to the wiki", "I just read X, file it" | Reads source → writes summary → updates entity/concept pages → indexes → logs |
 | **Query** | "What does the wiki say about X?", "Compare X and Y" | Reads index → candidate pages → synthesizes answer with citations → offers to file back |
 | **Update** | "Smith 2024 supersedes Keys 1980, update the wiki" | Semantic sweep across all pages → diff-before-write per page → single log entry |
 | **Lint** | "Health check the wiki", "anything broken?" | Runs `lint_wiki.py` → auto-saves `wiki/reports/lint-YYYY-MM-DD.md` → auto-tracks in index and log |
-| **Schema-evolve** | "We should always do X going forward" | Updates `CLAUDE.md` so future sessions inherit the convention |
+| **Schema-evolve** | "We should always do X going forward" | Updates the schema file (`AGENTS.md` / `CLAUDE.md`) so future sessions inherit the convention |
 | **Multi-wiki** | "Add this to my global wiki", "promote this page to global" | Routes between project wiki and global wiki using the `External Wiki:` declaration in project `CLAUDE.md` |
 | **Teach** | "How does this pattern work?", "explain the LLM wiki idea" | Explains the pattern, compares with RAG, walks through a concrete example |
 
@@ -116,7 +119,8 @@ cp ~/Downloads/pollan-2008.pdf raw/
 
 ```
 your-wiki/
-├── CLAUDE.md          # Schema — conventions for this wiki (co-evolved over time)
+├── AGENTS.md          # Schema — conventions for this wiki (co-evolved over time)
+├── CLAUDE.md          # One line: @AGENTS.md (Claude Code reads CLAUDE.md, Codex reads AGENTS.md)
 ├── raw/               # YOUR layer — immutable sources you curate. LLM reads, never writes.
 └── wiki/              # LLM layer — all pages written and maintained by the LLM
     ├── index.md       # Content catalog (updated on every ingest)
@@ -161,10 +165,10 @@ You almost never write wiki pages by hand. The LLM does the bookkeeping — that
 
 | Script | Purpose |
 |---|---|
-| `scripts/init_wiki.py` | Scaffold a new wiki — creates `raw/`, `wiki/`, `CLAUDE.md`, `index.md`, `log.md`, and `hot.md`. Idempotent. |
+| `scripts/init_wiki.py` | Scaffold a new wiki — creates `raw/`, `wiki/`, the schema file (`AGENTS.md` + `CLAUDE.md` pointer, or keeps an existing one), `index.md`, `log.md`, and `hot.md`. Idempotent. |
 | `scripts/append_log.py` | Append a `## [YYYY-MM-DD] action \| title` entry to `log.md`. Supports flexible log path detection. |
-| `scripts/update_index.py` | Add or update an entry under a category in `index.md`. Upserts by (category, title). Flexible index path detection. |
-| `scripts/lint_wiki.py` | Health check. Detects orphan pages and index drift in both standard markdown and Obsidian wiki-link (`[[...]]`) format. Default: writes `wiki/reports/lint-<today>.md` and auto-tracks. Run `--stdout` for terminal output. |
+| `scripts/update_index.py` | Add or update an entry under a category in `index.md`. Case-insensitive categories, keeps section order and content, follows the index link style (markdown or `[[wikilinks]]`), new categories go before `## Meta`. |
+| `scripts/lint_wiki.py` | Health check. Detects orphan pages, broken links and index drift in both standard markdown and Obsidian wiki-link format (`[[page#heading]]`, `![[embed.png]]` included). Default: writes `wiki/reports/lint-<today>.md` and auto-tracks. Run `--stdout` for terminal output. |
 | `scripts/migrate_wiki.py` | Schema upgrade (v1 → v2). Deduplicates `index.md`, moves dated changelog blocks from `hot.md` into `log.md`, stamps the schema version. Idempotent. |
 
 ### Templates
@@ -278,13 +282,13 @@ Full walkthroughs of all four scenarios in [`references/multi-wiki-routing.md`](
 
 ## Compatibility
 
-| Tool | Skills path | Notes |
+| Tool | Install | Schema file it reads |
 |---|---|---|
-| Claude Code | `~/.claude/skills/` or `.claude/skills/` | Global or project-level |
-| GitHub Copilot (VS Code) | `.vscode/skills/` | Agent mode required |
-| OpenAI Codex | `~/.codex/skills/` | Same SKILL.md format |
-| Cursor | `.cursor/skills/` | Project-level |
-| Gemini CLI | `~/.gemini/skills/` | |
+| Claude Code | plugin (`claude plugin install llm-wiki-manager@skill-hub`) or `~/.claude/skills/` | `CLAUDE.md` |
+| OpenAI Codex | plugin (`codex plugin add llm-wiki-manager@skill-hub`) or `~/.agents/skills/` | `AGENTS.md` |
+| GitHub Copilot, Cursor, Gemini CLI, … | `gh skill install … --agent <name>` | usually `AGENTS.md` |
+
+A wiki that keeps its schema in `AGENTS.md` with a one-line `CLAUDE.md` (`@AGENTS.md`) works in all of them; `init_wiki.py` sets that up.
 
 ---
 

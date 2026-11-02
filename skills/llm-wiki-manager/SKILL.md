@@ -1,10 +1,10 @@
 ---
 name: llm-wiki-manager
-description: Build, maintain, and query a personal LLM-managed wiki — a markdown knowledge base where the LLM owns all writing, cross-referencing, and bookkeeping while the user curates sources. Use this skill when the user wants to (1) bootstrap a new wiki, second brain, or research notebook; (2) ingest a new source (article, PDF, paper, transcript) and update relevant entity/concept pages, the index, and log; (3) query an existing wiki and synthesize an answer with citations, filing it back if useful; (4) update the wiki when a new source supersedes a claim across multiple pages (diff-before-write sweep); (5) lint the wiki for orphan pages, broken links, index drift, or stub pages — auto-dated reports. Trigger this when the user mentions a "second brain", "research wiki", "knowledge base", or "Memex", or asks Claude to track sources across sessions. Bundles four idempotent scripts and enforces the bookkeeping discipline that makes wikis compound rather than rot.
+description: Build, maintain, and query a personal LLM-managed wiki — a markdown knowledge base where the LLM owns all writing, cross-referencing, and bookkeeping while the user curates sources. Use this skill when the user wants to (1) bootstrap a new wiki, second brain, or research notebook; (2) ingest a new source (article, PDF, paper, transcript) and update relevant entity/concept pages, the index, and log; (3) query an existing wiki and synthesize an answer with citations, filing it back if useful; (4) update the wiki when a new source supersedes a claim across multiple pages (diff-before-write sweep); (5) lint the wiki for orphan pages, broken links, index drift, or stub pages — auto-dated reports. Trigger this when the user mentions a "second brain", "research wiki", "knowledge base", or "Memex", or asks the agent to track sources across sessions. Bundles five idempotent scripts and enforces the bookkeeping discipline that makes wikis compound rather than rot.
 license: MIT
 metadata:
   author: sametbrr
-  version: "1.4.0"
+  version: "1.5.0"
   tags:
     - wiki
     - knowledge-management
@@ -18,7 +18,11 @@ metadata:
 
 A skill for running a personal LLM-managed wiki: a persistent, compounding markdown knowledge base where the human curates sources and asks questions, and the LLM does all the reading, writing, cross-referencing, and bookkeeping.
 
-The pattern is intentionally tool-agnostic — it's just markdown files in a git repo. It works in any editor (Obsidian, VS Code, plain `vim`), and the skill makes no assumptions beyond "you have a filesystem and git". The user is on Claude Code.
+The pattern is intentionally tool-agnostic — it's just markdown files in a git repo. It works in any editor (Obsidian, VS Code, plain `vim`), and the skill makes no assumptions beyond "you have a filesystem and git". It runs the same way under Claude Code, Codex, or any Agent Skills client.
+
+**Schema file = `AGENTS.md` or `CLAUDE.md`.** Claude Code reads `CLAUDE.md`; Codex and most other agents read `AGENTS.md`. Use whichever the wiki already has. If `CLAUDE.md` only contains `@AGENTS.md`, the schema is `AGENTS.md`. New wikis get `AGENTS.md` plus a one-line `CLAUDE.md` (`@AGENTS.md`), so both hosts load the same schema. The scripts auto-detect it (`--schema-file` overrides). Throughout this skill and its references, "`CLAUDE.md`" means *the wiki's schema file*, whichever of the two it is.
+
+**Scripts** live in `scripts/` next to this file. Run them by path relative to this skill's directory, and always pass `--path <wiki-root>`.
 
 ## The three layers (memorize this)
 
@@ -26,7 +30,7 @@ Every wiki this skill manages has exactly three layers. Confusing them is the mo
 
 1. **`raw/`** — immutable sources the user curates. Articles, PDFs, transcripts, screenshots, data files. **The LLM reads from `raw/` but never modifies it.** This is the source of truth; if it gets edited the audit trail breaks.
 2. **`wiki/`** — markdown pages the LLM owns entirely. Source summaries, entity pages, concept pages, comparisons. Three structural files always live here: `wiki/index.md` (content catalog), `wiki/log.md` (operation log), `wiki/hot.md` (~500-word hot cache, rewritten after every ingest). The user reads it; the LLM writes it. Pages link to each other and back to specific files in `raw/`.
-3. **`CLAUDE.md`** (at the wiki root) — the schema. Tells future LLM sessions how this particular wiki is structured, what the page conventions are, how categories are named, how aggressive ingest should be. **Co-evolved with the user over time** — when something works, write it down here so the next session inherits it.
+3. **`CLAUDE.md` / `AGENTS.md`** (at the wiki root) — the schema. Tells future LLM sessions how this particular wiki is structured, what the page conventions are, how categories are named, how aggressive ingest should be. **Co-evolved with the user over time** — when something works, write it down here so the next session inherits it.
 
 The whole point of the pattern is that `wiki/` is a **persistent, compounding artifact**. It is *not* re-derived on every query. New sources update existing pages in place. That is what separates this from RAG.
 
@@ -48,7 +52,7 @@ When this skill triggers, identify which mode applies and read the matching refe
 
 If multiple modes apply (e.g., user asks a question and wants the answer filed back), do them in sequence and log each one.
 
-**Step 0 — schema version check (every mode).** The wiki's `CLAUDE.md` frontmatter carries a `schema_version` stamp (unstamped = v1). If it is lower than the version this skill expects, offer one sentence before starting the requested work: *"This wiki is at schema v1, the skill expects v2 — run `scripts/migrate_wiki.py` first?"* Don't block the requested operation if the user declines; lint also reports the mismatch as a finding.
+**Step 0 — schema version check (every mode).** The wiki schema file's frontmatter (`AGENTS.md` or `CLAUDE.md`) carries a `schema_version` stamp (unstamped = v1). If it is lower than the version this skill expects, offer one sentence before starting the requested work: *"This wiki is at schema v1, the skill expects v2 — run `scripts/migrate_wiki.py` first?"* Don't block the requested operation if the user declines; lint also reports the mismatch as a finding.
 
 **Update vs. Ingest's Disputes handling — important distinction.** Ingest already handles contradictions on a single page by adding a Disputes section. Switch to **Update mode** only when the new source's claim affects **multiple existing pages** — that is, when the same idea is paraphrased across the wiki and a single Disputes section won't keep the wiki internally consistent. If only one page is affected, stay in ingest. See `references/update-workflow.md` for the precise trigger checklist.
 
@@ -153,9 +157,9 @@ All five are in `scripts/`. They are deliberately small, idempotent, and depende
 
 - **`init_wiki.py`** — scaffold a new wiki. Creates `wiki/index.md`, `wiki/log.md`, `wiki/hot.md`, categorical subdirs, `CLAUDE.md`, `README.md`. On an **existing wiki** (already has `.md` files in `wiki/`) only adds `wiki/reports/` if missing — never imposes categorical dirs or overwrites files. Idempotent. See `references/bootstrap-workflow.md`.
 - **`append_log.py`** — append a log entry with the consistent `## [YYYY-MM-DD] action | title` prefix. Use after every ingest, query, update, and lint. Auto-detects `wiki/log.md` (standard) or `root/log.md` (flat layout). Always pass `--path <wiki-root>`. Valid actions: `ingest`, `query`, `update`, `lint`, `audit`, `bootstrap`, `schema-evolve`, `note`, `setup`, `restructure`.
-- **`update_index.py`** — add or update an entry under a category in `wiki/index.md`. Auto-detects `wiki/index.md` (standard) or `root/index.md` (flat layout). Preserves `#tag`-style category names. Always pass `--path <wiki-root>` and `--page-path <path-to-page>`. Idempotent on (category, title).
+- **`update_index.py`** — add or update an entry under a category in `wiki/index.md`. Auto-detects `wiki/index.md` (standard) or `root/index.md` (flat layout). Matches categories case-insensitively and keeps the existing heading spelling, preserves section order and content, inserts new categories before `## Meta` (`--tail`), and follows the index's link style: markdown links or `[[wikilinks]]` (`--link-style`). Keeps `★` hub marks on update; omit `--summary` to keep the old summary. Always pass `--path <wiki-root>` and `--page-path <path-to-page>`. Idempotent on (category, page).
 - **`lint_wiki.py`** — scan for orphan pages, broken links (markdown **and** `[[wiki-links]]`), index/filesystem drift, duplicate index entries, hot.md bloat, tag hygiene (single-use tags, over-tagged pages), ambiguous wiki-link slugs, log gaps, and schema-version drift. `wiki/hot.md` excluded from orphan/stub/index checks but gets its own health check. Auto-detects log and index in both `wiki/` and root layouts. **Default behavior**: writes report to `wiki/reports/lint-<today>.md`, then auto-tracks (adds Reports index entry, appends `lint | Health check` log entry). Same-day re-runs overwrite the report file. Override with `--stdout`, `--report PATH`, or `--no-track`; thresholds via `--stub-words`, `--log-gap-days`, `--hot-max-words`, `--max-tags`. See `references/lint-workflow.md`.
-- **`migrate_wiki.py`** — upgrade an existing wiki to the current structural conventions when a skill update changes them. Reads the `schema_version` stamp in the wiki's `CLAUDE.md` (unstamped = v1), shows a **dry-run** of the mechanical steps plus the manual (LLM) steps, applies with `--apply` only. Never touches `raw/`; logs every step as `restructure`; idempotent (re-running at the current version is a no-op). See `references/migrate-workflow.md`.
+- **`migrate_wiki.py`** — upgrade an existing wiki to the current structural conventions when a skill update changes them. Reads the `schema_version` stamp in the wiki's schema file (`AGENTS.md` or `CLAUDE.md`; unstamped = v1), shows a **dry-run** of the mechanical steps plus the manual (LLM) steps, applies with `--apply` only. Never touches `raw/`; logs every step as `restructure`; idempotent (re-running at the current version is a no-op). See `references/migrate-workflow.md`.
 
 Always prefer running these scripts to hand-editing `wiki/index.md` or `wiki/log.md`. They keep the format consistent across sessions and make the wiki greppable.
 

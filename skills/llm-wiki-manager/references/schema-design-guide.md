@@ -15,7 +15,7 @@ my-wiki/
 └── wiki/
 ```
 
-This way Claude Code automatically reads it on session start. If the user is on Codex or a different agent, the same file is named `AGENTS.md`. The contents are identical; only the filename differs.
+Claude Code reads `CLAUDE.md` on session start; Codex and most other agents read `AGENTS.md`. The contents are identical, only the filename differs. A wiki used from both keeps the schema in `AGENTS.md` and a one-line `CLAUDE.md` containing `@AGENTS.md`. `init_wiki.py` sets this up for new wikis, and every script auto-detects which file holds the schema.
 
 ## What goes in it
 

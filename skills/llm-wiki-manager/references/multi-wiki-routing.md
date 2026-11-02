@@ -86,17 +86,17 @@ Source attribution: x-project's auth implementation, 2026-05-07.
 Proceed?
 ```
 
-**Scripts the agent runs (note `--path` always points at the target wiki):**
+**Scripts the agent runs (note `--path` always points at the target wiki; `<skill-dir>` is the folder holding this skill's `SKILL.md`):**
 
 ```bash
-python3 ~/.claude/skills/llm-wiki-manager/scripts/update_index.py \
+python3 <skill-dir>/scripts/update_index.py \
   --path ~/Documents/obsidian \
   --category concepts \
   --title "JWT Refresh Token Rotation" \
   --page-path "wiki/concepts/jwt-refresh-rotation.md" \
   --summary "Sliding window rotation pattern for refresh tokens (from x-project)"
 
-python3 ~/.claude/skills/llm-wiki-manager/scripts/append_log.py \
+python3 <skill-dir>/scripts/append_log.py \
   --path ~/Documents/obsidian \
   --action ingest \
   --title "JWT refresh rotation pattern" \
@@ -213,10 +213,10 @@ The redirect stub is one line of content plus the absolute path. Future readers 
 **The agent runs `lint_wiki.py` against each wiki separately:**
 
 ```bash
-python3 ~/.claude/skills/llm-wiki-manager/scripts/lint_wiki.py \
+python3 <skill-dir>/scripts/lint_wiki.py \
   --path ~/projects/x-project
 
-python3 ~/.claude/skills/llm-wiki-manager/scripts/lint_wiki.py \
+python3 <skill-dir>/scripts/lint_wiki.py \
   --path ~/Documents/obsidian
 ```
 
@@ -309,7 +309,7 @@ If only the project wiki exists and the user wants to start a global one:
 # 1. Bootstrap the global wiki at its target location
 mkdir ~/Documents/obsidian
 cd ~/Documents/obsidian
-python3 ~/.claude/skills/llm-wiki-manager/scripts/init_wiki.py .
+python3 <skill-dir>/scripts/init_wiki.py .
 
 # 2. Back in the project, add the External Wiki link to the project CLAUDE.md
 #    (agent does this on request: "link this project to a global wiki at ~/Documents/obsidian")

@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-02
+
+### Changed
+- Plugin layout: the skill moved to `skills/llm-wiki-manager/` (scripts, references and assets with it) so Codex discovers it. The Claude Code skill ID is unchanged. **Scripts now live at `<plugin>/skills/llm-wiki-manager/scripts/`**: update any hardcoded script paths.
+- Schema file is host-neutral: every script auto-detects `AGENTS.md` or `CLAUDE.md` (`--schema-file` overrides). New wikis get `AGENTS.md` plus a one-line `CLAUDE.md` (`@AGENTS.md`), so Claude Code and Codex load the same schema.
+- `update_index.py` rewritten:
+  - case-insensitive category match that keeps the existing heading spelling;
+  - section order and content (blank lines, prose) preserved;
+  - new categories go before `## Meta` (`--tail`);
+  - link style follows the index, markdown or `[[wikilinks]]` (`--link-style`);
+  - `★` hub marks and old summaries kept on update.
+- Agent-neutral wording; multi-wiki examples use skill-relative script paths instead of `~/.claude/skills/...`.
+
+### Added
+- `.codex-plugin/plugin.json` (Codex plugin), `AGENTS.md`, `version` in both manifests.
+- `tests/test_scripts.py`: functional tests for init, update_index, lint and migrate.
+
+### Fixed
+- `lint_wiki.py`: links inside inline code and fenced code blocks are examples, not links, and are no longer checked. `[[page#heading]]`, `[[page#^block]]`, `[[#local]]` and `![[embed.png]]` are no longer reported as broken; dead `[[slug]]` entries in the index are now reported instead of silently ignored.
+- Release workflow reads the version from `.claude-plugin/plugin.json`, checks the Codex manifest matches, and passes notes via `--notes-file`. Commit text is no longer interpolated into shell.
+- SKILL.md said "four" scripts (there are five); README said 8 modes (there are 9). The README's `.skill` download option pointed to a release asset that never existed and was removed.
+
 ## [1.4.0] - 2026-06-10
 
 ### Added

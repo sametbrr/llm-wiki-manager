@@ -9,7 +9,7 @@ semantic steps (tag consolidation, theme-grouped index rewrite, hub election,
 Related footers) are LLM work described in references/migrate-workflow.md and
 are listed in the dry-run output as manual steps.
 
-The wiki's CLAUDE.md frontmatter carries a `schema_version` stamp. An
+The wiki's schema file (AGENTS.md or CLAUDE.md) carries a `schema_version` stamp. An
 unstamped wiki counts as v1. This script knows how to migrate v1 -> v2 (and
 future versions get their own registry entries).
 
@@ -34,6 +34,12 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from schema_file import ensure_claude_pointer, resolve_schema_file  # noqa: E402
+
+# Set from --schema-file in main(); None = auto-detect AGENTS.md / CLAUDE.md.
+SCHEMA_OVERRIDE: str | None = None
+
 
 # The schema version the bundled templates/conventions correspond to.
 # Bump this ONLY when a release changes structural conventions, and add a
@@ -48,11 +54,11 @@ INDEX_WIKILINK_PATTERN = re.compile(r"^\s*-\s*\[\[([^\]|]+)(?:\|[^\]]*)?\]\]")
 # the Migrate mode following references/migrate-workflow.md.
 MANUAL_STEPS = {
     2: [
-        "Consolidate tags to the canonical list in CLAUDE.md (max 4/page, 2+ pages per tag, merge synonyms)",
+        "Consolidate tags to the canonical list in the schema file (AGENTS.md or CLAUDE.md) (max 4/page, 2+ pages per tag, merge synonyms)",
         "Rewrite the index as theme-grouped v2 (one entry per page, `★` marks hubs)",
         "Elect hubs for 3+ page clusters and add `## Pages in this cluster` sections",
         "Add `## Related` footers (2-5 links + one-line why) to wiki pages",
-        "Update CLAUDE.md with the new conventions (tag policy, hub rule, index rule)",
+        "Update the schema file with the new conventions (tag policy, hub rule, index rule)",
     ],
 }
 
@@ -65,9 +71,9 @@ def find_file(root: Path, name: str) -> Path | None:
     return None
 
 
-def read_schema_version(root: Path) -> int:
-    """schema_version from CLAUDE.md frontmatter; unstamped wiki = v1."""
-    claude_md = root / "CLAUDE.md"
+def read_schema_version(root: Path, schema_override: str | None = None) -> int:
+    """schema_version from the schema file's frontmatter (AGENTS.md or CLAUDE.md); unstamped wiki = v1."""
+    claude_md = resolve_schema_file(root, schema_override)
     if not claude_md.exists():
         return 1
     text = claude_md.read_text(encoding="utf-8", errors="replace")
@@ -83,15 +89,19 @@ def read_schema_version(root: Path) -> int:
     return 1
 
 
-def stamp_schema_version(root: Path, version: int, apply: bool) -> str:
-    """Set schema_version in CLAUDE.md frontmatter (insert frontmatter if absent)."""
-    claude_md = root / "CLAUDE.md"
+def stamp_schema_version(
+    root: Path, version: int, apply: bool, schema_override: str | None = None,
+) -> str:
+    """Set schema_version in the schema file's frontmatter (insert frontmatter if absent)."""
+    claude_md = resolve_schema_file(root, schema_override)
+    name = claude_md.name
     if not claude_md.exists():
         if apply:
             claude_md.write_text(
                 f"---\nschema_version: {version}\n---\n", encoding="utf-8"
             )
-        return f"create CLAUDE.md with schema_version: {version}"
+            ensure_claude_pointer(root, claude_md)
+        return f"create {name} with schema_version: {version}"
 
     text = claude_md.read_text(encoding="utf-8", errors="replace")
     if text.startswith("---\n"):
@@ -110,7 +120,7 @@ def stamp_schema_version(root: Path, version: int, apply: bool) -> str:
 
     if apply:
         claude_md.write_text(new_text, encoding="utf-8")
-    return f"stamp CLAUDE.md frontmatter with schema_version: {version}"
+    return f"stamp {name} frontmatter with schema_version: {version}"
 
 
 def dedupe_index(root: Path, apply: bool) -> str:
@@ -220,7 +230,7 @@ MIGRATIONS: dict[int, list] = {
     2: [
         dedupe_index,
         move_hot_changelog,
-        lambda root, apply: stamp_schema_version(root, 2, apply),
+        lambda root, apply: stamp_schema_version(root, 2, apply, SCHEMA_OVERRIDE),
     ],
 }
 
@@ -254,14 +264,20 @@ def main() -> int:
         "--apply", action="store_true",
         help="Apply the migration. Default is dry-run. Commit the wiki to git first.",
     )
+    parser.add_argument(
+        "--schema-file", default=None,
+        help="Schema file (default: auto-detect AGENTS.md / CLAUDE.md).",
+    )
     args = parser.parse_args()
+    global SCHEMA_OVERRIDE
+    SCHEMA_OVERRIDE = args.schema_file
 
     root = Path(args.path).expanduser().resolve()
     if not (root / "wiki").exists() and not (root / "index.md").exists():
         print(f"error: {root} doesn't look like a wiki root", file=sys.stderr)
         return 1
 
-    current = read_schema_version(root)
+    current = read_schema_version(root, SCHEMA_OVERRIDE)
     print(f"Wiki schema: v{current} · skill expects: v{EXPECTED_SCHEMA_VERSION}")
 
     if current >= EXPECTED_SCHEMA_VERSION:

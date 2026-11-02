@@ -4,7 +4,7 @@
 
 # LLM Wiki Manager
 
-Kişisel, LLM tarafından yönetilen bir wiki oluşturmak ve sürdürmek için Claude Code skill'i — LLM tüm yazma, çapraz referans ve kayıt tutma işlerini yaparken siz kaynakları seçip sorular sorarsınız.
+Kişisel, LLM tarafından yönetilen bir wiki oluşturmak ve sürdürmek için Claude Code ve Codex'e yönelik bir Agent Skill ve plugin — LLM tüm yazma, çapraz referans ve kayıt tutma işlerini yaparken siz kaynakları seçip sorular sorarsınız.
 
 > 🇬🇧 For English see [README.md](README.md)
 
@@ -13,13 +13,14 @@ Kişisel, LLM tarafından yönetilen bir wiki oluşturmak ve sürdürmek için C
 ## Hızlı Başlangıç
 
 ```bash
-git clone https://github.com/sametbrr/llm-wiki-manager ~/.claude/skills/llm-wiki-manager
+claude plugin marketplace add sametbrr/skill-hub && claude plugin install llm-wiki-manager@skill-hub   # Claude Code
+codex plugin marketplace add sametbrr/skill-hub && codex plugin add llm-wiki-manager@skill-hub         # Codex
 ```
 
-Araştırma klasörünüzde yeni bir Claude Code oturumu başlatın:
+Araştırma klasörünüzde yeni bir oturum başlatın:
 
 ```bash
-mkdir ~/research/konum && cd ~/research/konum && claude
+mkdir ~/research/konum && cd ~/research/konum && claude   # ya da: codex
 > "Burada bir LLM wiki oluştur. Konu: beslenme bilimi tarihi."
 ```
 
@@ -29,7 +30,7 @@ mkdir ~/research/konum && cd ~/research/konum && claude
 
 RAG'dan farklı olarak — LLM'nin her sorguda ham belgelerden cevap yeniden keşfettiği yaklaşım — bu pattern LLM'nin ham kaynakları kalıcı, birbiriyle bağlantılı bir markdown wiki'sine **derlemesini** sağlar. Her yeni kaynak mevcut sayfaları zenginleştirir. Çapraz referanslar hevesle kurulur. Çelişkiler işaretlenir. Bilgi zamanla birikerek büyür.
 
-[Karpathy'nin LLM Wiki pattern'ini](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 8 çalışma modu (çok-wiki yönlendirme dahil), 5 idempotent Python scripti, 8 sayfa şablonu ve 11 referans belgeyle tam bir Claude Code skill'i olarak uygular.
+[Karpathy'nin LLM Wiki pattern'ini](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 9 çalışma modu (çok-wiki yönlendirme ve migrate dahil), 5 idempotent Python scripti, 8 sayfa şablonu ve 11 referans belgeyle tam bir agent skill'i olarak uygular.
 
 ```
 Bu pattern olmadan          Bu pattern ile
@@ -43,31 +44,33 @@ Sorgu 3 → 50 belge yeniden okunur    Sorgu 3 → güncel wiki okunur (çelişk
 
 ## Gereksinimler
 
-- Claude Code veya herhangi bir [agentskills.io](https://agentskills.io) uyumlu agent
+- Claude Code, OpenAI Codex veya herhangi bir [agentskills.io](https://agentskills.io) uyumlu agent
 - Python 3.9+ (yalnızca stdlib, dahil 5 script için — pip kurulumu gerekmez)
 
 ---
 
 ## Kurulum
 
-**Seçenek 1 — git clone (önerilen)**
+**Seçenek 1 — Claude Code plugin'i (önerilen)**
 ```bash
-git clone https://github.com/sametbrr/llm-wiki-manager ~/.claude/skills/llm-wiki-manager
+claude plugin marketplace add sametbrr/skill-hub
+claude plugin install llm-wiki-manager@skill-hub
 ```
 
-**Seçenek 2 — GitHub CLI** (gh CLI v2.90+ gerektirir)
+**Seçenek 2 — Codex plugin'i**
 ```bash
-gh skill install sametbrr/llm-wiki-manager
+codex plugin marketplace add sametbrr/skill-hub
+codex plugin add llm-wiki-manager@skill-hub
 ```
 
-**Seçenek 3 — .skill dosyası**
+**Seçenek 3 — GitHub CLI, herhangi bir agent** (`gh skill` destekli gh CLI)
 ```bash
-curl -L -o llm-wiki-manager.skill \
-  https://github.com/sametbrr/llm-wiki-manager/releases/latest/download/llm-wiki-manager.skill
-unzip llm-wiki-manager.skill -d ~/.claude/skills/llm-wiki-manager
+gh skill install sametbrr/llm-wiki-manager llm-wiki-manager --agent claude-code --scope user   # ya da --agent codex
 ```
 
-Kurulumdan sonra yeni bir Claude Code oturumu başlatın. Skill ilgili olduğunda otomatik yüklenir.
+**Seçenek 4 — elle kopyalama:** `skills/llm-wiki-manager/` klasörünü `~/.claude/skills/` ya da `~/.agents/skills/` altına kopyalayın.
+
+Kurduktan sonra yeni bir oturum başlatın. Skill gerektiğinde otomatik yüklenir.
 
 ---
 
@@ -79,12 +82,12 @@ Skill, doğal dilden hangi modun uygulanacağını otomatik olarak algılar. Sla
 
 | Mod | Tetikleyici örnekler | Ne olur |
 |---|---|---|
-| **Bootstrap** | "Wiki kur", "burada bir bilgi tabanı başlat" | `raw/`, `wiki/`, `CLAUDE.md`'yi şablonlardan oluşturur |
+| **Bootstrap** | "Wiki kur", "burada bir bilgi tabanı başlat" | `raw/`, `wiki/` ve şema dosyasını (`AGENTS.md` + `CLAUDE.md` yönlendirmesi) şablonlardan oluşturur |
 | **Ingest** | "Bu PDF'i wiki'ye ekle", "X'i az önce okudum, kaydet" | Kaynağı okur → özet yazar → varlık/kavram sayfalarını günceller → indeksler → loglar |
 | **Query** | "Wiki X hakkında ne diyor?", "X ile Y'yi karşılaştır" | İndeksi okur → aday sayfalar → alıntılı cevap sentezler → kaydetmeyi teklif eder |
 | **Update** | "Smith 2024, Keys 1980'in yerini aldı, wiki'yi güncelle" | Tüm sayfalarda semantik tarama → sayfa başına diff-before-write → tek log girişi |
 | **Lint** | "Wiki'yi kontrol et", "bir sorun var mı?" | `lint_wiki.py` çalıştırır → `wiki/reports/lint-YYYY-MM-DD.md` kaydeder → indeks ve log'a ekler |
-| **Schema-evolve** | "Bundan böyle her zaman X yapmalıyız" | `CLAUDE.md`'yi günceller, böylece gelecek oturumlar bu kuralı bilir |
+| **Schema-evolve** | "Bundan böyle her zaman X yapmalıyız" | Şema dosyasını (`AGENTS.md` / `CLAUDE.md`) günceller, böylece gelecek oturumlar bu kuralı bilir |
 | **Multi-wiki** | "Bunu global wiki'me ekle", "global wiki hakkında ne diyor" | Proje `CLAUDE.md`'sindeki bildirgeye göre wiki'ler arasında yönlendirir |
 | **Teach** | "Bu pattern nasıl çalışıyor?", "LLM wiki fikrini açıkla" | Pattern'i açıklar, RAG ile karşılaştırır, somut bir örnek üzerinden anlatır |
 
@@ -116,7 +119,8 @@ cp ~/Downloads/kitap-2008.pdf raw/
 
 ```
 your-wiki/
-├── CLAUDE.md          # Şema — bu wiki için kurallar (zamanla birlikte evrilir)
+├── AGENTS.md          # Şema — bu wiki için kurallar (zamanla birlikte evrilir)
+├── CLAUDE.md          # Tek satır: @AGENTS.md (Claude Code CLAUDE.md'yi, Codex AGENTS.md'yi okur)
 ├── raw/               # SİZİN katmanınız — değiştirilemez kaynaklar. LLM okur, asla yazmaz.
 └── wiki/              # LLM katmanı — tüm sayfalar LLM tarafından yazılır ve sürdürülür
     ├── index.md       # İçerik kataloğu (her içe aktarmada güncellenir)
@@ -161,10 +165,10 @@ Wiki sayfalarını neredeyse hiç elinizle yazmazsınız. LLM kayıt işlemlerin
 
 | Script | Amaç |
 |---|---|
-| `scripts/init_wiki.py` | Yeni bir wiki oluşturur — `raw/`, `wiki/`, `CLAUDE.md`, `index.md`, `log.md` ve `hot.md` oluşturur. İdempotent. |
+| `scripts/init_wiki.py` | Yeni bir wiki oluşturur — `raw/`, `wiki/`, şema dosyası (`AGENTS.md` + `CLAUDE.md` yönlendirmesi ya da mevcut olanı korur), `index.md`, `log.md` ve `hot.md` oluşturur. İdempotent. |
 | `scripts/append_log.py` | `log.md`'ye `## [YYYY-MM-DD] eylem \| başlık` girişi ekler. Esnek log yolu tespitini destekler. |
-| `scripts/update_index.py` | `index.md`'de bir kategori altına giriş ekler veya günceller. (kategori, başlık) çiftine göre upsert yapar. |
-| `scripts/lint_wiki.py` | Sağlık kontrolü. Hem standart markdown hem Obsidian wiki-link (`[[...]]`) formatında yetim sayfaları ve indeks kaymasını tespit eder. Varsayılan: `wiki/reports/lint-<bugün>.md` yazar ve otomatik takip eder. |
+| `scripts/update_index.py` | `index.md`'de bir kategori altına giriş ekler veya günceller. Kategoriler büyük/küçük harfe duyarsız eşleşir, bölüm sırası ve içeriği korunur, link stili (markdown ya da `[[wikilink]]`) index'e uyar, yeni kategoriler `## Meta`'dan önce eklenir. |
+| `scripts/lint_wiki.py` | Sağlık kontrolü. Hem standart markdown hem Obsidian wiki-link formatında (`[[sayfa#başlık]]`, `![[embed.png]]` dahil) yetim sayfaları, kırık linkleri ve indeks kaymasını tespit eder. Varsayılan: `wiki/reports/lint-<bugün>.md` yazar ve otomatik takip eder. |
 | `scripts/migrate_wiki.py` | Şema yükseltme (v1 → v2). `index.md`'yi tekilleştirir, `hot.md`'deki tarihli changelog bloklarını `log.md`'ye taşır, şema sürümünü damgalar. İdempotent. |
 
 ### Şablonlar
@@ -276,13 +280,13 @@ Dört senaryonun ayrıntılı anlatımı [`references/multi-wiki-routing.md`](re
 
 ## Uyumluluk
 
-| Araç | Skills yolu | Notlar |
+| Araç | Kurulum | Okuduğu şema dosyası |
 |---|---|---|
-| Claude Code | `~/.claude/skills/` veya `.claude/skills/` | Global veya proje düzeyinde |
-| GitHub Copilot (VS Code) | `.vscode/skills/` | Agent modu gerekli |
-| OpenAI Codex | `~/.codex/skills/` | Aynı SKILL.md formatı |
-| Cursor | `.cursor/skills/` | Proje düzeyinde |
-| Gemini CLI | `~/.gemini/skills/` | |
+| Claude Code | plugin (`claude plugin install llm-wiki-manager@skill-hub`) ya da `~/.claude/skills/` | `CLAUDE.md` |
+| OpenAI Codex | plugin (`codex plugin add llm-wiki-manager@skill-hub`) ya da `~/.agents/skills/` | `AGENTS.md` |
+| GitHub Copilot, Cursor, Gemini CLI, … | `gh skill install … --agent <ad>` | genelde `AGENTS.md` |
+
+Şemayı `AGENTS.md`'de tutan ve tek satırlık bir `CLAUDE.md` (`@AGENTS.md`) içeren wiki hepsinde çalışır; `init_wiki.py` bunu kurar.
 
 ---
 

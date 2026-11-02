@@ -37,8 +37,10 @@ from pathlib import Path
 LINK_PATTERN = re.compile(
     r"\[(?P<text>[^\]]+)\]\((?P<url>[^)\s]+)(?:\s+\"[^\"]*\")?\)"
 )
-# Obsidian wiki-links: [[slug]] or [[slug|alias]]
-WIKILINK_PATTERN = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]*)?\]\]")
+# Obsidian wiki-links: [[slug]], [[slug|alias]], [[slug#heading]], [[slug#^block]],
+# [[folder/slug]] and embeds ![[image.png]] / ![[note]]. Group 1 is the raw target
+# (before the alias); wikilink_target() strips the #heading part.
+WIKILINK_PATTERN = re.compile(r"!?\[\[([^\]|]+)(?:\|[^\]]*)?\]\]")
 LOG_DATE_PATTERN = re.compile(r"^## \[(\d{4}-\d{2}-\d{2})\]")
 INDEX_LINK_PATTERN = re.compile(
     r"^\s*-\s*\[([^\]]+)\]\(([^)]+)\)"
@@ -49,6 +51,43 @@ INDEX_WIKILINK_PATTERN = re.compile(
 )
 
 
+FENCED_CODE = re.compile(r"^(```|~~~).*?^\1[^\n]*$", re.M | re.S)
+INLINE_CODE = re.compile(r"`[^`\n]+`")
+
+
+def strip_code(text: str) -> str:
+    """Drop fenced blocks and inline code spans: links shown as code are examples, not links."""
+    return INLINE_CODE.sub("", FENCED_CODE.sub("", text))
+
+
+def wikilink_target(raw: str) -> str | None:
+    """Target of a wiki-link without its #heading / #^block part; None for same-page anchors."""
+    target = raw.split("#", 1)[0].strip()
+    return target or None
+
+
+def resolve_wikilink(target: str, wiki_dir: Path) -> tuple[str, Path]:
+    """
+    Resolve a wiki-link target to a file. Notes ([[slug]], [[slug.md]], [[dir/slug]])
+    are searched under wiki/; attachments with another extension ([[img.png]]) are
+    searched under the whole wiki root (wiki/ and raw/). Unresolved targets map to
+    a nominal path that doesn't exist, so the caller reports them as broken.
+    """
+    suffix = Path(target).suffix.lower()
+    if suffix and suffix != ".md":
+        name = Path(target).name
+        for base in (wiki_dir, wiki_dir.parent):
+            matches = list(base.rglob(name))
+            if matches:
+                return f"[[{target}]]", matches[0].resolve()
+        return f"[[{target}]]", (wiki_dir / target).resolve()
+    slug = target[:-3] if suffix == ".md" else target
+    matches = list(wiki_dir.rglob(f"{slug}.md"))
+    if matches:
+        return f"[[{slug}]]", matches[0].resolve()
+    return f"[[{slug}]]", (wiki_dir / f"{slug}.md").resolve()
+
+
 # Schema version the bundled templates/conventions correspond to.
 # Kept in sync with migrate_wiki.py's registry. The script can be invoked from
 # any cwd (e.g. via subprocess), so make the script dir importable first.
@@ -57,6 +96,7 @@ try:
     from migrate_wiki import EXPECTED_SCHEMA_VERSION
 except ImportError:
     EXPECTED_SCHEMA_VERSION = 2
+from schema_file import resolve_schema_file  # noqa: E402
 
 
 def is_external(url: str) -> bool:
@@ -141,7 +181,7 @@ def collect_links(md_path: Path, wiki_dir: Path) -> list[tuple[str, Path]]:
     Unresolved wiki-links resolve to the nominal path wiki/<slug>.md, which does
     not exist — so check_broken_links reports them instead of skipping silently.
     """
-    text = md_path.read_text(encoding="utf-8", errors="replace")
+    text = strip_code(md_path.read_text(encoding="utf-8", errors="replace"))
     out: list[tuple[str, Path]] = []
 
     for m in LINK_PATTERN.finditer(text):
@@ -155,12 +195,10 @@ def collect_links(md_path: Path, wiki_dir: Path) -> list[tuple[str, Path]]:
         out.append((url, resolved))
 
     for m in WIKILINK_PATTERN.finditer(text):
-        slug = m.group(1).strip()
-        matches = list(wiki_dir.rglob(f"{slug}.md"))
-        if matches:
-            out.append((f"[[{slug}]]", matches[0].resolve()))
-        else:
-            out.append((f"[[{slug}]]", (wiki_dir / f"{slug}.md").resolve()))
+        target = wikilink_target(m.group(1))
+        if target is None:
+            continue  # [[#heading]]: same-page anchor
+        out.append(resolve_wikilink(target, wiki_dir))
 
     return out
 
@@ -175,7 +213,10 @@ def check_wikilink_collisions(md_files: list[Path], wiki_dir: Path) -> list[dict
     for md in md_files:
         text = md.read_text(encoding="utf-8", errors="replace")
         for m in WIKILINK_PATTERN.finditer(text):
-            slug = m.group(1).strip()
+            target = wikilink_target(m.group(1))
+            if target is None or Path(target).suffix.lower() not in ("", ".md"):
+                continue
+            slug = target[:-3] if target.lower().endswith(".md") else target
             if slug in seen:
                 continue
             matches = list(wiki_dir.rglob(f"{slug}.md"))
@@ -286,13 +327,16 @@ def check_index_drift(
         # Obsidian wiki-links: [[slug]] or [[slug|alias]]
         wm = INDEX_WIKILINK_PATTERN.match(line)
         if wm:
-            slug = wm.group(1).strip()
-            # Resolve slug to a .md file anywhere under wiki_dir
-            matches = list(wiki_dir.rglob(f"{slug}.md"))
-            if matches:
-                indexed_targets.add(matches[0].resolve())
-            # Wiki-links that point to non-existent slugs are silently ignored
-            # (they may be forward references or stubs)
+            target = wikilink_target(wm.group(1))
+            if target is None:
+                continue
+            label, resolved = resolve_wikilink(target, wiki_dir)
+            if resolved.exists():
+                indexed_targets.add(resolved)
+            else:
+                # An index entry must point at a real page: a dead [[slug]] in
+                # the catalog is drift, same as a dead markdown link.
+                dead.append({"title": label, "url": label, "resolved": str(resolved)})
 
     missing = [p for p in md_files if p.resolve() not in indexed_targets]
     return missing, dead
@@ -327,9 +371,10 @@ def check_index_duplicates(wiki_dir: Path) -> list[dict]:
             continue
         wm = INDEX_WIKILINK_PATTERN.match(line)
         if wm:
-            slug = wm.group(1).strip()
-            matches = list(wiki_dir.rglob(f"{slug}.md"))
-            target = matches[0].resolve() if matches else (wiki_dir / f"{slug}.md").resolve()
+            raw_target = wikilink_target(wm.group(1))
+            if raw_target is None:
+                continue
+            _, target = resolve_wikilink(raw_target, wiki_dir)
             occurrences[target].append(category)
 
     return [
@@ -416,13 +461,13 @@ def check_tag_health(
     return single_use, overtagged, unparsed
 
 
-def check_schema_version(root: Path) -> dict | None:
+def check_schema_version(root: Path, schema_override: str | None = None) -> dict | None:
     """
-    Compare the wiki CLAUDE.md's schema_version stamp against what this skill
-    version expects. Unstamped wikis count as v1. Returns a finding dict when
-    the wiki is behind, else None.
+    Compare the schema file's (AGENTS.md or CLAUDE.md) schema_version stamp against
+    what this skill version expects. Unstamped wikis count as v1. Returns a finding
+    dict when the wiki is behind, else None.
     """
-    claude_md = root / "CLAUDE.md"
+    claude_md = resolve_schema_file(root, schema_override)
     current = 1
     if claude_md.exists():
         fm = parse_frontmatter(claude_md.read_text(encoding="utf-8", errors="replace"))
@@ -561,7 +606,10 @@ def render_report(results: dict, root: Path, thresholds: dict) -> str:
             lines.append(f"### Dead index entries ({len(results['index_dead'])})\n")
             lines.append("`wiki/index.md` references files that don't exist.\n")
             for entry in results["index_dead"]:
-                lines.append(f"- [{entry['title']}]({entry['url']})")
+                if entry["url"].startswith("[["):
+                    lines.append(f"- `{entry['url']}`")
+                else:
+                    lines.append(f"- [{entry['title']}]({entry['url']})")
             lines.append("")
 
     # QUALITY
@@ -623,7 +671,7 @@ def render_report(results: dict, root: Path, thresholds: dict) -> str:
             )
             lines.append(
                 "Tags are classifiers, not keywords — trim to the canonical list "
-                "in CLAUDE.md.\n"
+                "in the schema file (AGENTS.md / CLAUDE.md).\n"
             )
             for t in results["overtagged"]:
                 lines.append(f"- `{t['path']}` ({t['count']} tags: {', '.join(t['tags'])})")
@@ -685,7 +733,7 @@ def render_report(results: dict, root: Path, thresholds: dict) -> str:
     lines.append("---\n")
     lines.append("**Not checked here (LLM responsibility):** stale claims, ")
     lines.append("unflagged contradictions, missing pages on cross-cutting entities, ")
-    lines.append("schema drift between `CLAUDE.md` and actual practice.\n")
+    lines.append("schema drift between the schema file (`AGENTS.md` / `CLAUDE.md`) and actual practice.\n")
     return "\n".join(lines)
 
 
@@ -783,6 +831,10 @@ def main() -> int:
         "--max-tags", type=int, default=4,
         help="Pages with more frontmatter tags than this are flagged (default: 4).",
     )
+    parser.add_argument(
+        "--schema-file", default=None,
+        help="Schema file (default: auto-detect AGENTS.md / CLAUDE.md).",
+    )
     args = parser.parse_args()
 
     root = Path(args.path).expanduser().resolve()
@@ -807,7 +859,7 @@ def main() -> int:
     hot_health = check_hot_health(wiki_dir, args.hot_max_words)
     single_use_tags, overtagged, tag_unparsed = check_tag_health(md_files, args.max_tags)
     wikilink_collisions = check_wikilink_collisions(md_files, wiki_dir)
-    schema_version = check_schema_version(root)
+    schema_version = check_schema_version(root, args.schema_file)
 
     results = {
         "broken_links": broken,

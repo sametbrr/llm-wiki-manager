@@ -1,0 +1,42 @@
+{
+  "name": "llm-wiki-manager",
+  "version": "1.5.0",
+  "description": "Personal LLM-managed wiki: ingest sources, cross-reference pages, query with citations, and lint your markdown knowledge base — for Claude Code and Codex",
+  "author": {
+    "name": "sametbrr",
+    "email": "sametbrr@gmail.com",
+    "url": "https://github.com/sametbrr"
+  },
+  "homepage": "https://github.com/sametbrr/llm-wiki-manager",
+  "repository": "https://github.com/sametbrr/llm-wiki-manager",
+  "license": "MIT",
+  "keywords": [
+    "wiki",
+    "knowledge-management",
+    "second-brain",
+    "research",
+    "obsidian",
+    "agent-skills",
+    "claude-code",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "LLM Wiki Manager",
+    "shortDescription": "A markdown second brain the agent maintains",
+    "longDescription": "Karpathy-style LLM wiki: you curate sources in raw/, the agent writes and cross-references wiki/ pages, keeps index, log and hot cache current, answers with citations, and lints for broken links and drift. Works with Obsidian vaults.",
+    "developerName": "sametbrr",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Set up an LLM wiki here",
+      "Ingest this source into my wiki",
+      "Health check the wiki"
+    ],
+    "websiteURL": "https://github.com/sametbrr/llm-wiki-manager"
+  }
+}

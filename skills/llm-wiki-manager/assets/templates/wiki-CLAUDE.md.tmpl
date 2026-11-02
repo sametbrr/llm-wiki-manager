@@ -5,7 +5,7 @@ schema_version: 2
 # {{WIKI_NAME}}
 
 > A personal LLM-managed wiki using the [LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f). Maintained with the `llm-wiki-manager` skill.
-> The LLM (Claude) owns all writing in `wiki/`. The user owns `raw/`. This file is the schema.
+> The LLM agent owns all writing in `wiki/`. The user owns `raw/`. This file is the schema.
 > `schema_version` tracks the structural conventions this wiki follows; `migrate_wiki.py` uses it to upgrade the wiki when the skill's conventions change. Do not edit by hand.
 
 ## Purpose
@@ -17,8 +17,8 @@ schema_version: 2
 ## Layers
 
 - `raw/` — immutable sources, user-curated. Read but never modify.
-- `wiki/` — LLM-managed pages. Owned by Claude. The user reads, doesn't write.
-- `CLAUDE.md` (this file) — schema. Co-evolved with the user as conventions emerge.
+- `wiki/` — LLM-managed pages. Owned by the agent. The user reads, doesn't write.
+- This file (`AGENTS.md`, or `CLAUDE.md` in Claude-only wikis) — schema. Co-evolved with the user as conventions emerge.
 
 ## Structural files
 
