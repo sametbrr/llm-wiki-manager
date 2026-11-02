@@ -2,6 +2,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/agentskills.io-compatible-blue)](https://agentskills.io)
 
+[Hızlı Başlangıç](#hızlı-başlangıç) • [Kurulum](#kurulum) • [Kullanım](#kullanım) • [Update Modu](#update-modu) • [Çok-Wiki](#çok-wiki) • [Uyumluluk](#uyumluluk)
+
 # LLM Wiki Manager
 
 Kişisel, LLM tarafından yönetilen bir wiki oluşturmak ve sürdürmek için Claude Code ve Codex'e yönelik bir Agent Skill ve plugin — LLM tüm yazma, çapraz referans ve kayıt tutma işlerini yaparken siz kaynakları seçip sorular sorarsınız.
@@ -20,8 +22,8 @@ codex plugin marketplace add sametbrr/skill-hub && codex plugin add llm-wiki-man
 Araştırma klasörünüzde yeni bir oturum başlatın:
 
 ```bash
-mkdir ~/research/konum && cd ~/research/konum && claude   # ya da: codex
-> "Burada bir LLM wiki oluştur. Konu: beslenme bilimi tarihi."
+mkdir ~/research/my-topic && cd ~/research/my-topic && claude   # ya da: codex
+> "Set up an LLM wiki here. Topic: history of nutrition science."
 ```
 
 ---
@@ -33,11 +35,11 @@ RAG'dan farklı olarak — LLM'nin her sorguda ham belgelerden cevap yeniden ke�
 [Karpathy'nin LLM Wiki pattern'ini](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) 9 çalışma modu (çok-wiki yönlendirme ve migrate dahil), 5 idempotent Python scripti, 8 sayfa şablonu ve 11 referans belgeyle tam bir agent skill'i olarak uygular.
 
 ```
-Bu pattern olmadan          Bu pattern ile
-──────────────────          ──────────────
-Sorgu 1 → 50 belge yeniden okunur    Sorgu 1 → derlenmiş wiki okunur (zaten sentezlendi)
-Sorgu 2 → 50 belge yeniden okunur    Sorgu 2 → güncel wiki okunur (çapraz referanslar hazır)
-Sorgu 3 → 50 belge yeniden okunur    Sorgu 3 → güncel wiki okunur (çelişkiler işaretlendi)
+Bu pattern olmadan                    Bu pattern ile
+────────────────────                  ──────────────────
+Sorgu 1 → 50 belge yeniden okunur     Sorgu 1 → derlenmiş wiki okunur (zaten sentezlendi)
+Sorgu 2 → 50 belge yeniden okunur     Sorgu 2 → güncel wiki okunur (çapraz referanslar hazır)
+Sorgu 3 → 50 belge yeniden okunur     Sorgu 3 → güncel wiki okunur (çelişkiler işaretlendi)
 ```
 
 ---
@@ -78,6 +80,17 @@ Kurduktan sonra yeni bir oturum başlatın. Skill gerektiğinde otomatik yüklen
 
 Skill, doğal dilden hangi modun uygulanacağını otomatik olarak algılar. Slash komutu gerekmez.
 
+```
+> "Set up an LLM wiki here"                             # Bootstrap: raw/, wiki/ ve şema dosyasını kurar
+> "Add this PDF to the wiki"                            # Ingest: özetler, çapraz bağlar, indeksler, loglar
+> "What does the wiki say about X?"                     # Query: alıntılı cevap verir, kaydetmeyi teklif eder
+> "Smith 2024 supersedes Keys 1980, update the wiki"    # Update: iddiayı içeren tüm sayfaları tarar
+> "Lint the wiki"                                       # Lint: wiki/reports/ içine tarihli sağlık raporu
+> "We should always do X going forward"                 # Schema-evolve: gelecek oturumlar için bir kural kaydeder
+> "Add this to my global wiki"                          # Multi-wiki: proje ve global wiki arasında yönlendirir
+> "How does this pattern work?"                         # Teach: pattern'i açıklar, RAG ile karşılaştırır
+```
+
 ### Modlar
 
 | Mod | Tetikleyici örnekler | Ne olur |
@@ -95,22 +108,22 @@ Skill, doğal dilden hangi modun uygulanacağını otomatik olarak algılar. Sla
 
 ```bash
 # 1. Araştırma klasörünüze gidin
-mkdir ~/research/konum && cd ~/research/konum && claude
+mkdir ~/research/my-topic && cd ~/research/my-topic && claude
 
 # 2. Wiki'yi başlatın
-> "Burada bir LLM wiki oluştur. Konu: beslenme bilimi tarihi."
+> "Set up an LLM wiki here. Topic: history of nutrition science."
 
 # 3. Kaynak ekleyin
-cp ~/Downloads/kitap-2008.pdf raw/
+cp ~/Downloads/pollan-2008.pdf raw/
 
 # 4. İçeri aktarın
-> "Kitabı wiki'ye ekle"
+> "Ingest Pollan's In Defense of Food"
 
 # 5. Sorular sorun
-> "Wiki, beslenmecilik hakkında ne diyor?"
+> "What does the wiki say about nutritionism?"
 
 # 6. Sağlık kontrolü (wiki/reports/ içine tarihli rapor kaydeder)
-> "Wiki'yi lint et"
+> "Lint the wiki"
 ```
 
 ---
@@ -130,7 +143,7 @@ your-wiki/
     ├── entities/      # Kişiler, kuruluşlar, yerler, ürünler
     ├── concepts/      # Fikirler, teoriler, çerçeveler, terimler
     ├── notes/         # Kaydedilen sorgu cevapları ve serbest sayfalar
-    └── reports/       # Otomatik oluşturulan tarihli lint raporları
+    └── reports/       # Otomatik oluşturulan tarihli lint raporları (wiki/reports/lint-YYYY-MM-DD.md)
 ```
 
 **İş bölümü:**
@@ -195,7 +208,7 @@ Skill bunları seçici olarak okur — sizin okumanıza gerek yok. Her mod için
 
 ## Update Modu
 
-Standart ingest tek bir sayfadaki çelişkileri zaten işler. **Update modu**, yeni bir kaynağın birden fazla sayfada farklı biçimlerde parafraz edilmiş bir iddiayı geçersiz kılması durumu içindir.
+Standart ingest tek bir sayfadaki çelişkileri zaten işler (Disputes bölümü). **Update modu**, yeni bir kaynağın birden fazla sayfada farklı biçimlerde parafraz edilmiş bir iddiayı geçersiz kılması durumu içindir.
 
 ```
 Senaryo: Smith 2024 analizi, Keys 1980'in yedi ülke çalışmasının verileri seçici kullandığını gösteriyor.
@@ -208,10 +221,12 @@ Keys r=0.87 iddiası şu şekillerde geçiyor:
 Update modu:
   1. Semantik tarama — dördünü de bulur (grep bulamaz, LLM bulur)
   2. Kapsam gösterir: "4 sayfa etkilendi. Devam edilsin mi?"
-  3. Sayfa başına diff-before-write — her değişiklik için e/h/atla/düzenle
-  4. Sayfa başına strateji: revize / disputes / notla (tek tip değil)
+  3. Sayfa başına diff-before-write — her değişiklik için y/n/skip/edit
+  4. Sayfa başına strateji: revise / disputes / annotate (tek tip değil)
   5. Dört düzenlemeyi de Smith 2024'e bağlayan tek log girişi
 ```
+
+Bu, değişiklik **yayılımıdır**, değişiklik takibi değil. Neyin düzenlendiğini log ve frontmatter takip eder. Update modu, düzenlemenin ulaşması gereken her yere ulaşmasını sağlar.
 
 ---
 
@@ -232,13 +247,13 @@ Override bayrakları: `--stdout` (terminal, takip yok), `--no-track` (dosya yaz,
 Çoğu kullanıcı tek bir wiki ile başlar. **İki** wiki'niz olduğunda — örneğin çalışma dizinindeki proje wikisi ve uzun ömürlü global bir "second brain" (çoğu zaman mevcut bir Obsidian vault'u) — skill, yazmaları projenin `CLAUDE.md`'sindeki tek bir tanıma göre ikisi arasında yönlendirir.
 
 ```
-~/projects/x-project/          ← active project (current working directory)
-├── CLAUDE.md                  ← project schema — declares the global wiki path
-├── raw/                       ← project sources
-└── wiki/                      ← project wiki
+~/projects/x-project/          ← aktif proje (geçerli çalışma dizini)
+├── CLAUDE.md                  ← proje şeması — global wiki yolunu tanımlar
+├── raw/                       ← proje kaynakları
+└── wiki/                      ← proje wikisi
 
-~/Documents/obsidian/          ← global wiki (long-lived, exists across projects)
-├── CLAUDE.md                  ← global schema
+~/Documents/obsidian/          ← global wiki (uzun ömürlü, projeler arası)
+├── CLAUDE.md                  ← global şema
 ├── raw/
 └── wiki/
 ```
@@ -300,3 +315,11 @@ Dört senaryonun ayrıntılı anlatımı [`references/multi-wiki-routing.md`](re
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+[Hata Bildir](https://github.com/sametbrr/llm-wiki-manager/issues) · [Özellik İste](https://github.com/sametbrr/llm-wiki-manager/issues)
+
+</div>

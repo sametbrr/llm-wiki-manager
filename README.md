@@ -2,6 +2,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/agentskills.io-compatible-blue)](https://agentskills.io)
 
+[Quick Start](#quick-start) • [Installation](#installation) • [Usage](#usage) • [Update mode](#update-mode) • [Multi-wiki](#multi-wiki) • [Compatibility](#compatibility)
+
 # LLM Wiki Manager
 
 An Agent Skill and plugin for Claude Code and Codex for building and maintaining a personal LLM-managed wiki — a persistent, compounding knowledge base where the LLM does all the writing, cross-referencing, and bookkeeping while you curate sources and ask questions.
@@ -77,6 +79,17 @@ After installing, start a new session. The skill loads automatically when releva
 ## Usage
 
 The skill auto-detects which mode applies from natural language. No slash commands needed.
+
+```
+> "Set up an LLM wiki here"                             # Bootstrap: scaffold raw/, wiki/ and the schema file
+> "Add this PDF to the wiki"                            # Ingest: summarize, cross-reference, index, log
+> "What does the wiki say about X?"                     # Query: answer with citations, offer to file back
+> "Smith 2024 supersedes Keys 1980, update the wiki"    # Update: sweep every page that paraphrases the claim
+> "Lint the wiki"                                       # Lint: dated health report in wiki/reports/
+> "We should always do X going forward"                 # Schema-evolve: record a convention for future sessions
+> "Add this to my global wiki"                          # Multi-wiki: route between project and global wiki
+> "How does this pattern work?"                         # Teach: explain the pattern and compare it with RAG
+```
 
 ### Modes
 
@@ -302,3 +315,11 @@ A wiki that keeps its schema in `AGENTS.md` with a one-line `CLAUDE.md` (`@AGENT
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+<div align="center">
+
+[Report Bug](https://github.com/sametbrr/llm-wiki-manager/issues) · [Request Feature](https://github.com/sametbrr/llm-wiki-manager/issues)
+
+</div>
