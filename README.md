@@ -312,6 +312,15 @@ A wiki that keeps its schema in `AGENTS.md` with a one-line `CLAUDE.md` (`@AGENT
 
 ---
 
+## Contributing
+
+- Questions and ideas: [Discussions](https://github.com/sametbrr/llm-wiki-manager/discussions)
+- Bugs: [issue tracker](https://github.com/sametbrr/llm-wiki-manager/issues)
+- Pull requests: read the [contribution guide](https://github.com/sametbrr/.github/blob/main/CONTRIBUTING.md) first
+- Security reports: follow the [security policy](https://github.com/sametbrr/llm-wiki-manager/security/policy), not a public issue
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

@@ -312,6 +312,15 @@ Dört senaryonun ayrıntılı anlatımı [`references/multi-wiki-routing.md`](re
 
 ---
 
+## Katkıda Bulunma
+
+- Sorular ve fikirler: [Discussions](https://github.com/sametbrr/llm-wiki-manager/discussions)
+- Hatalar: [issue takibi](https://github.com/sametbrr/llm-wiki-manager/issues)
+- Pull request'ler: önce [katkı rehberini](https://github.com/sametbrr/.github/blob/main/CONTRIBUTING.md) okuyun
+- Güvenlik bildirimleri: herkese açık issue yerine [güvenlik politikasını](https://github.com/sametbrr/llm-wiki-manager/security/policy) izleyin
+
+---
+
 ## Lisans
 
 MIT — bkz. [LICENSE](LICENSE).
